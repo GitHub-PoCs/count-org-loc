@@ -1,0 +1,42 @@
+name: run
+on:
+  push: {}
+  workflow_dispatch: 
+    inputs:
+      org_or_user:
+        description: 'The org (or user) to calculate total lines of code'
+        required: false
+        type: string
+env:
+  GITHUB_TOKEN: ${{ secrets.ORG_GITHUB_TOKEN }}
+jobs:
+  run:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: 3.0
+
+      - name: script/bootstrap
+        run: script/bootstrap
+
+      - name: Count LOC (Workflow Dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          script/count ${{ inputs.org_or_user }}
+
+      - name: Default Count
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          script/count balter-test-org
+
+      - name: Upload LOC Report to Artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: loc-report
+          path: ./script/loc_report.csv
