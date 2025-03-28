@@ -5,6 +5,7 @@ require 'open3'
 require 'cliver'
 require 'fileutils'
 require 'dotenv'
+require 'csv'
 
 if ARGV.count != 1
   puts 'Usage: script/count [ORG NAME]'
@@ -40,6 +41,8 @@ end
 puts "Found #{repos.count} repos. Counting..."
 
 reports = []
+repo_stats = [] # Array to store repo stats for CSV
+
 repos.each do |repo|
   puts "Counting #{repo.name}..."
 
@@ -52,10 +55,32 @@ repos.each do |repo|
   next unless status.exitstatus.zero?
 
   _output, _status = cloc destination, '--quiet', "--report-file=#{report_file}"
-  reports.push(report_file) if File.exist?(report_file) && status.exitstatus.zero?
+  if File.exist?(report_file) && status.exitstatus.zero?
+    reports.push(report_file)
+
+    # Extract relevant data from the report file
+    lines = File.read(report_file).lines
+    total_line = lines.find { |line| line.match(/^SUM/) }
+    if total_line
+      columns = total_line.strip.split(/\s+/)
+      # Assuming columns: files, blank, comment, code
+      repo_stats << [repo.name, columns[1], columns[2], columns[3], columns[4]]
+    else
+      repo_stats << [repo.name, "0", "0", "0", "0"]
+    end
+  end
 end
 
 puts 'Done. Summing...'
 
 output, _status = cloc '--sum-reports', *reports
 puts output.gsub(%r{^#{Regexp.escape tmp_dir}/(.*)\.txt}) { Regexp.last_match(1) + ' ' * (tmp_dir.length + 5) }
+
+# Write to CSV
+csv_file = File.expand_path("loc_report.csv", File.dirname(__FILE__))
+CSV.open(csv_file, "w", headers: true) do |csv|
+  csv << ["Repository", "Files", "Blank", "Comment", "Code"]
+  repo_stats.each { |row| csv << row }
+end
+
+puts "Report saved to loc_report.csv"
