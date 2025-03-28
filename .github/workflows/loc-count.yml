@@ -1,6 +1,5 @@
-name: run
+name: Org-loc
 on:
-  push: {}
   workflow_dispatch: 
     inputs:
       org_or_user:
