@@ -36,7 +36,7 @@ jobs:
 
       - name: Upload LOC Report to Artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: loc-report
           path: ./script/loc_report.csv
